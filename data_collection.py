@@ -25,18 +25,23 @@ mp_draw = mp.solutions.drawing_utils
 os.makedirs('images/raw', exist_ok=True)
 os.makedirs('images/landmarks', exist_ok=True)
 
-csv_file = 'data.csv'
-if not os.path.exists(csv_file):
-    with open(csv_file, 'w', newline='') as f:
-        writer = csv.writer(f)
-        headers = []
-        for i in range(21):
-            headers.extend([f'x_{i}', f'y_{i}', f'z_{i}'])
-        writer.writerow(['timestamp', 'label'] + headers)
+# Create both training and testing CSV files
+train_csv = 'data_train.csv'
+test_csv = 'data_test.csv'
+
+for csv_file in [train_csv, test_csv]:
+    if not os.path.exists(csv_file):
+        with open(csv_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            headers = []
+            for i in range(21):
+                headers.extend([f'x_{i}', f'y_{i}', f'z_{i}'])
+            writer.writerow(['timestamp', 'label'] + headers)
 
 cap = cv2.VideoCapture(0)
 show_landmarks = False
 current_label_idx = 0
+is_training_mode = True  # Toggle between training and testing mode
 
 while True:
     ret, frame = cap.read()
@@ -48,7 +53,9 @@ while True:
 
     # Add label text to the frame
     label_text = f"Current Label: {GESTURES[current_label_idx]}"
+    mode_text = f"Mode: {'Training' if is_training_mode else 'Testing'}"
     cv2.putText(frame, label_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(frame, mode_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb_frame)
@@ -83,13 +90,18 @@ while True:
                 for landmark in hand_landmarks.landmark:
                     landmarks_data.extend([landmark.x, landmark.y, landmark.z])
                 
-                with open(csv_file, 'a', newline='') as f:
+                # Choose the appropriate CSV file based on the current mode
+                current_csv = train_csv if is_training_mode else test_csv
+                with open(current_csv, 'a', newline='') as f:
                     writer = csv.writer(f)
                     writer.writerow([timestamp, current_label_idx] + landmarks_data)
+    
     elif key == ord('a'):
         current_label_idx = (current_label_idx - 1) % len(GESTURES)
     elif key == ord('d'):
         current_label_idx = (current_label_idx + 1) % len(GESTURES)
+    elif key == ord('m'):  # Toggle between training and testing mode
+        is_training_mode = not is_training_mode
 
 cap.release()
 cv2.destroyAllWindows()

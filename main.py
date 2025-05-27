@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
@@ -10,26 +9,24 @@ from sklearn.ensemble import RandomForestClassifier
 import keras
 import pickle
 
-url = "data.csv"
-df = pd.read_csv(url)
+# Load training and testing data
+train_df = pd.read_csv("data_train.csv")
+test_df = pd.read_csv("data_test.csv")
 
-X = df.drop("label", axis=1).drop("timestamp", axis=1).values
-y = df["label"].values
-print(df.head(5))
+# Prepare training data
+X_train = train_df.drop("label", axis=1).drop("timestamp", axis=1).values
+y_train = train_df["label"].values
 
-def plot_hand(points, title=""):
-    points = np.array(points).reshape(-1, 3)
-    plt.scatter(points[:, 0], -points[:, 1])
-    for i, (x, y, _) in enumerate(points):
-        plt.text(x, -y, str(i), fontsize=8)
-    plt.title(title)
-    plt.axis("equal")
-    plt.grid(True)
-    plt.show()
+# Prepare testing data
+X_test = test_df.drop("label", axis=1).drop("timestamp", axis=1).values
+y_test = test_df["label"].values
 
-# plot_hand(X[0], title=f"Przykład gestu: {y[0]}")
+print("Training data shape:", X_train.shape)
+print("Testing data shape:", X_test.shape)
+print("\nTraining data sample:")
+print(train_df.head(5))
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
@@ -40,22 +37,38 @@ models_dict = {
     "RandomForest": RandomForestClassifier()
 }
 
+print("\nModel Evaluation:")
+print("-" * 50)
 for name, model in models_dict.items():
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
     
-    print(f"🔍 {name} Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+    print(f"\n🔍 {name} Results:")
+    print(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+    print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
 
+# Neural Network model
+print("\n🔮 Neural Network Training:")
+print("-" * 50)
 model_nn = keras.models.Sequential([
-    keras.layers.Input(shape=(X.shape[1],)),
+    keras.layers.Input(shape=(X_train.shape[1],)),
     keras.layers.Dense(64, activation='relu'),
     keras.layers.Dense(32, activation='relu'),
-    keras.layers.Dense(len(np.unique(y)), activation='softmax')
+    keras.layers.Dense(len(np.unique(y_train)), activation='softmax')
 ])
 
 model_nn.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 history = model_nn.fit(X_train_scaled, y_train, epochs=20, validation_split=0.2, verbose=1)
 
+# Evaluate neural network
 loss, acc = model_nn.evaluate(X_test_scaled, y_test)
-print(f"📊 Sieć neuronowa – dokładność: {acc:.2f}")
+print(f"\n📊 Neural Network Final Results:")
+print(f"Test Accuracy: {acc:.2f}")
+print(f"Test Loss: {loss:.2f}")
+
+# Save the best performing model (you can modify this based on your needs)
+best_model = models_dict["RandomForest"]  # or choose based on performance
+with open('best_model.pkl', 'wb') as f:
+    pickle.dump(best_model, f)
+print("\n💾 Best model saved as 'best_model.pkl'")

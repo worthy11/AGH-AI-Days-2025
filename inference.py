@@ -184,7 +184,7 @@ while True:
                 except Exception as e:
                     print(f"Error making prediction: {e}")
 
-    cv2.imshow('Hand Gesture Recognition', frame_with_landmarks if show_landmarks else frame)
+    cv2.imshow('Hand Gesture Recognition', frame_with_landmarks)
 
     key = cv2.waitKey(1) & 0xFF
 
